@@ -51,27 +51,42 @@ st.caption(
     "čísla. Data: 2023-01 až 2024-12."
 )
 
-total_revenue = monthly["revenue"].sum()
-total_orders = monthly["orders"].sum()
-avg_order_value = total_revenue / total_orders
-avg_review = (delivery["avg_review_score"] * delivery["orders"]).sum() / delivery["orders"].sum()
-
-
 def kc(value):
     return f"{value:,.0f} Kč".replace(",", " ")
 
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Tržby celkem", kc(total_revenue))
-col2.metric("Objednávky celkem", f"{total_orders:,.0f}".replace(",", " "))
-col3.metric("Průměrná hodnota objednávky", kc(avg_order_value))
-col4.metric("Průměrné hodnocení", f"{avg_review:.2f} / 5")
+def pct_delta(current, previous):
+    return f"{(current / previous - 1) * 100:+.1f} %"
 
-st.header("1. Vývoj tržeb v čase")
+
+last_3m = monthly.tail(3)
+prev_3m = monthly.iloc[-6:-3]
+
+revenue_3m, revenue_prev = last_3m["revenue"].sum(), prev_3m["revenue"].sum()
+profit_3m, profit_prev = last_3m["profit"].sum(), prev_3m["profit"].sum()
+orders_3m, orders_prev = last_3m["orders"].sum(), prev_3m["orders"].sum()
+aov_3m, aov_prev = last_3m["avg_order_value"].mean(), prev_3m["avg_order_value"].mean()
+
+st.caption(f"Klíčová čísla za posledních 3 měsíce ({last_3m['year_month'].iloc[0]} – "
+           f"{last_3m['year_month'].iloc[-1]}), v procentech srovnání vs. předchozí 3 měsíce.")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Tržby (3 měsíce)", kc(revenue_3m), pct_delta(revenue_3m, revenue_prev))
+col2.metric("Zisk (3 měsíce)", kc(profit_3m), pct_delta(profit_3m, profit_prev))
+col3.metric("Objednávky (3 měsíce)", f"{orders_3m:,.0f}".replace(",", " "), pct_delta(orders_3m, orders_prev))
+col4.metric("Průměrná hodnota objednávky", kc(aov_3m), pct_delta(aov_3m, aov_prev))
+
+st.header("1. Vývoj tržeb a zisku v čase")
+st.caption("Zisk roste pomaleji než tržby v listopadu a prosinci – nižší marže kvůli slevovým akcím (Black Friday, Vánoce).")
 fig1 = go.Figure()
 fig1.add_trace(go.Scatter(x=monthly["year_month"], y=monthly["revenue"], name="Tržby",
                            mode="lines+markers", line=dict(color=PRIMARY, width=3), marker=dict(size=5)))
-style(fig1, y_title="Kč", x_title="Měsíc")
+fig1.add_trace(go.Scatter(x=monthly["year_month"], y=monthly["profit"], name="Zisk",
+                           mode="lines+markers", line=dict(color="#54A24B", width=3), marker=dict(size=5),
+                           yaxis="y2"))
+fig1.update_layout(
+    yaxis2=dict(overlaying="y", side="right", title="Kč (zisk)", showgrid=False),
+)
+style(fig1, y_title="Kč (tržby)", x_title="Měsíc")
 st.plotly_chart(fig1, use_container_width=True)
 
 col_a, col_b = st.columns(2)

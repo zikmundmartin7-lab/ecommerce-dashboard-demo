@@ -1,8 +1,8 @@
 """
 Generuje syntetická (vymyšlená) data pro ukázkový e-shop dashboard.
 Žádná řádka nepochází z reálné firmy ani reálného zákazníka - čísla jsou
-nastavená tak, aby ukázala typické vzorce (sezónnost, geografie doručení,
-retence, poměr dopravy k ceně), ne pozorování z konkrétního datasetu.
+nastavená tak, aby ukázala typické vzorce (sezónnost, marže, retence,
+poměr dopravy k ceně), ne pozorování z konkrétního datasetu.
 Nepodléhá tedy žádné licenci třetí strany.
 """
 import numpy as np
@@ -24,8 +24,14 @@ avg_order_value = rng.normal(1450, 40, len(months)).round(0)
 revenue = (orders * avg_order_value).round(2)
 items = (orders * rng.normal(1.35, 0.05, len(months))).round().astype(int)
 
+# Marže: základ 26 %, nižší v měsících se slevovými akcemi (Black Friday, Vánoce, lednový výprodej)
+margin_discount = {1: -0.02, 11: -0.07, 12: -0.04}
+margin = np.array([0.26 + margin_discount.get(int(m.split("-")[1]), 0) for m in months])
+margin = margin + rng.normal(0, 0.008, len(months))
+profit = (revenue * margin).round(2)
+
 monthly = pd.DataFrame({
-    "year_month": months, "revenue": revenue, "orders": orders,
+    "year_month": months, "revenue": revenue, "profit": profit, "orders": orders,
     "items": items, "avg_order_value": avg_order_value,
 })
 total_revenue = monthly["revenue"].sum()

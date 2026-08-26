@@ -55,25 +55,40 @@ def kc(value):
     return f"{value:,.0f} Kč".replace(",", " ")
 
 
-def pct_delta(current, previous):
-    return f"{(current / previous - 1) * 100:+.1f} %"
+def n(value):
+    return f"{value:,.0f}".replace(",", " ")
 
 
-last_3m = monthly.tail(3)
-prev_3m = monthly.iloc[-6:-3]
+# Poslední 3 měsíce zvlášť, od nejnovějšího po nejstarší - velikost písma klesá s tím,
+# jak je měsíc starší, aby aktuální měsíc vizuálně vynikl.
+last_3 = monthly.tail(3).iloc[::-1].reset_index(drop=True)
+month_labels = ["Aktuální měsíc", "Minulý měsíc", "Předminulý měsíc"]
+tiers = [
+    {"value_size": "30px", "label_size": "13px", "pad": "1.35rem 1.5rem", "weight": 700},
+    {"value_size": "22px", "label_size": "12px", "pad": "1.1rem 1.25rem", "weight": 600},
+    {"value_size": "17px", "label_size": "11px", "pad": "0.9rem 1rem", "weight": 500},
+]
 
-revenue_3m, revenue_prev = last_3m["revenue"].sum(), prev_3m["revenue"].sum()
-profit_3m, profit_prev = last_3m["profit"].sum(), prev_3m["profit"].sum()
-orders_3m, orders_prev = last_3m["orders"].sum(), prev_3m["orders"].sum()
-aov_3m, aov_prev = last_3m["avg_order_value"].mean(), prev_3m["avg_order_value"].mean()
-
-st.caption(f"Klíčová čísla za posledních 3 měsíce ({last_3m['year_month'].iloc[0]} – "
-           f"{last_3m['year_month'].iloc[-1]}), v procentech srovnání vs. předchozí 3 měsíce.")
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Tržby (3 měsíce)", kc(revenue_3m), pct_delta(revenue_3m, revenue_prev))
-col2.metric("Zisk (3 měsíce)", kc(profit_3m), pct_delta(profit_3m, profit_prev))
-col3.metric("Objednávky (3 měsíce)", f"{orders_3m:,.0f}".replace(",", " "), pct_delta(orders_3m, orders_prev))
-col4.metric("Průměrná hodnota objednávky", kc(aov_3m), pct_delta(aov_3m, aov_prev))
+st.caption("Klíčová čísla za jednotlivé měsíce – aktuální měsíc zvýrazněn.")
+cols = st.columns(3)
+for i, col in enumerate(cols):
+    row = last_3.iloc[i]
+    t = tiers[i]
+    stats = [("Tržby", kc(row["revenue"])), ("Zisk", kc(row["profit"])),
+             ("Objednávky", n(row["orders"])), ("Průměrná objednávka", kc(row["avg_order_value"]))]
+    stats_html = "".join(
+        f'<p style="font-size:{t["label_size"]};color:var(--color-text-secondary);margin:6px 0 0;">{label}</p>'
+        f'<p style="font-size:{t["value_size"]};font-weight:{t["weight"]};margin:0;">{value}</p>'
+        for label, value in stats
+    )
+    col.markdown(
+        f'<div style="background:var(--color-background-secondary);border-radius:12px;'
+        f'padding:{t["pad"]};">'
+        f'<p style="font-size:{t["label_size"]};color:var(--color-text-secondary);margin:0 0 4px;'
+        f'text-transform:uppercase;letter-spacing:0.03em;">{month_labels[i]} · {row["year_month"]}</p>'
+        f'{stats_html}</div>',
+        unsafe_allow_html=True,
+    )
 
 st.header("1. Vývoj tržeb a zisku v čase")
 st.caption("Zisk roste pomaleji než tržby v listopadu a prosinci – nižší marže kvůli slevovým akcím (Black Friday, Vánoce).")

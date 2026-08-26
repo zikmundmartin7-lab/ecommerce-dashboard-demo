@@ -70,20 +70,7 @@ delivery_summary.to_csv(f"{OUT}/delivery_review_summary.csv", index=False)
 on_time_review = pd.DataFrame({"on_time": ["Ano", "Ne"], "avg_review_score": [4.55, 2.85]})
 on_time_review.to_csv(f"{OUT}/on_time_review.csv", index=False)
 
-# 5. Doba doručení a hodnocení podle kraje (Praha/Brno = distribuční centrum = nejrychlejší)
-region_delivery = reg_df[["region"]].copy()
-region_delivery["avg_delivery_days"] = np.select(
-    [region_delivery["region"].isin(["Praha", "Středočeský"]),
-     region_delivery["region"].isin(["Jihomoravský", "Plzeňský"])],
-    [1.8, 2.6], default=4.2,
-) + rng.normal(0, 0.25, len(region_delivery))
-region_delivery["avg_delivery_days"] = region_delivery["avg_delivery_days"].round(1)
-region_delivery["avg_review_score"] = (4.7 - (region_delivery["avg_delivery_days"] - 1.8) * 0.28).round(2)
-region_delivery["orders"] = reg_df["orders"].values
-region_delivery.sort_values("avg_delivery_days", ascending=False).to_csv(
-    f"{OUT}/region_delivery_review.csv", index=False)
-
-# 6. Retence zákazníků
+# 5. Retence zákazníků
 repeat_customers = pd.DataFrame({
     "segment": ["Jednorázoví zákazníci", "Opakovaní zákazníci"],
     "customers": [17400, 5600],
@@ -91,7 +78,7 @@ repeat_customers = pd.DataFrame({
 repeat_customers["pct"] = (repeat_customers["customers"] / repeat_customers["customers"].sum() * 100).round(1)
 repeat_customers.to_csv(f"{OUT}/repeat_customers.csv", index=False)
 
-# 7. Poměr ceny dopravy k ceně produktu podle kategorie
+# 6. Poměr ceny dopravy k ceně produktu podle kategorie
 freight_ratio_map = {
     "Nábytek": 38, "Zahrada": 29, "Sport a outdoor": 24, "Domácnost a bydlení": 22,
     "Auto-moto doplňky": 19, "Hračky a hry": 16, "Zvířecí potřeby": 15,
@@ -105,7 +92,7 @@ freight_df = pd.DataFrame({
 freight_df.sort_values("avg_freight_ratio", ascending=False).to_csv(
     f"{OUT}/freight_ratio_category.csv", index=False)
 
-# 8. Platební metody (typické pro český e-shop)
+# 7. Platební metody (typické pro český e-shop)
 payment = pd.DataFrame({
     "payment_type": ["Platební karta", "Bankovní převod", "Dobírka", "Apple Pay / Google Pay", "Splátky"],
     "total_value": [0.52, 0.20, 0.14, 0.09, 0.05],
@@ -115,6 +102,5 @@ payment.sort_values("total_value", ascending=False).to_csv(f"{OUT}/payment_metho
 
 print("Hotovo. Syntetická data v data/:")
 for name in ["monthly_revenue", "category_revenue", "region_revenue", "delivery_review_summary",
-             "on_time_review", "region_delivery_review", "repeat_customers",
-             "freight_ratio_category", "payment_methods"]:
+             "on_time_review", "repeat_customers", "freight_ratio_category", "payment_methods"]:
     print(f"  {name}.csv")

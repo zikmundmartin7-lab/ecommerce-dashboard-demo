@@ -14,11 +14,10 @@ def load_data():
     region = pd.read_csv(f"{DATA_DIR}/region_revenue.csv")
     delivery = pd.read_csv(f"{DATA_DIR}/delivery_review_summary.csv")
     on_time = pd.read_csv(f"{DATA_DIR}/on_time_review.csv")
-    region_delivery = pd.read_csv(f"{DATA_DIR}/region_delivery_review.csv")
     repeat_customers = pd.read_csv(f"{DATA_DIR}/repeat_customers.csv")
     freight_ratio = pd.read_csv(f"{DATA_DIR}/freight_ratio_category.csv")
     payment = pd.read_csv(f"{DATA_DIR}/payment_methods.csv")
-    return monthly, category, region, delivery, on_time, region_delivery, repeat_customers, freight_ratio, payment
+    return monthly, category, region, delivery, on_time, repeat_customers, freight_ratio, payment
 
 
 def style(fig, height=420, y_title=None, x_title=None):
@@ -42,7 +41,7 @@ def style(fig, height=420, y_title=None, x_title=None):
 PRIMARY = "#4C78A8"
 ACCENT = "#F58518"
 
-monthly, category, region, delivery, on_time, region_delivery, repeat_customers, freight_ratio, payment = load_data()
+monthly, category, region, delivery, on_time, repeat_customers, freight_ratio, payment = load_data()
 
 st.title("Prodej a e-shop – ukázkový dashboard")
 st.caption(
@@ -123,36 +122,7 @@ style(fig5, height=380, y_title="průměrné hodnocení (1–5)", x_title="Doru�
 fig5.update_layout(title=dict(text="Hodnocení: včas vs. pozdě", font=dict(size=15)))
 col_d.plotly_chart(fig5, use_container_width=True)
 
-st.header("5. Proč mají pomalé objednávky horší hodnocení? Geografie doručení")
-corr = region_delivery["avg_delivery_days"].corr(region_delivery["avg_review_score"])
-st.markdown(
-    f"Napříč kraji platí jasný vzorec: čím dál od distribučního centra (Praha/Středočeský kraj), "
-    f"tím déle objednávka jede a tím hůř ji zákazník hodnotí "
-    f"(korelace průměrné doby doručení a hodnocení napříč kraji: **{corr:.2f}**). "
-    f"Špatné hodnocení u pomalých doručení tedy není náhodná nespokojenost s produktem – "
-    f"je to z velké části **logistický/geografický problém**, ne problém kvality zboží."
-)
-
-col_e, col_f = st.columns(2)
-top_slow = region_delivery.sort_values("avg_delivery_days", ascending=False).head(8)
-fig7 = go.Figure()
-fig7.add_trace(go.Bar(x=top_slow["region"], y=top_slow["avg_delivery_days"],
-                       marker_color="#E45756", name="Průměrná doba doručení"))
-style(fig7, height=380, y_title="dní")
-fig7.update_layout(title=dict(text="8 nejpomalejších krajů (průměrná doba doručení)", font=dict(size=15)))
-col_e.plotly_chart(fig7, use_container_width=True)
-
-fig8 = go.Figure()
-fig8.add_trace(go.Scatter(
-    x=region_delivery["avg_delivery_days"], y=region_delivery["avg_review_score"],
-    mode="markers+text", text=region_delivery["region"], textposition="top center",
-    marker=dict(size=region_delivery["orders"].clip(upper=5000) / 100 + 6, color=PRIMARY, opacity=0.7),
-))
-style(fig8, height=380, y_title="průměrné hodnocení", x_title="průměrná doba doručení (dní)")
-fig8.update_layout(title=dict(text="Doba doručení vs. hodnocení podle kraje", font=dict(size=15)))
-col_f.plotly_chart(fig8, use_container_width=True)
-
-st.header("6. Retence zákazníků a poměr dopravy k ceně")
+st.header("5. Retence zákazníků a poměr dopravy k ceně")
 repeat_pct = repeat_customers.loc[repeat_customers["segment"] == "Opakovaní zákazníci", "pct"].iloc[0]
 st.markdown(
     f"Jen **{repeat_pct:.1f} %** zákazníků u tohoto e-shopu nakoupilo víckrát než jednou "
@@ -179,7 +149,7 @@ col_h.plotly_chart(fig10, use_container_width=True)
 st.caption(f"Průměr napříč kategoriemi: {freight_ratio['avg_freight_ratio'].mean():.0f} % "
            "— u některých kategorií doprava tvoří velkou část ceny produktu.")
 
-st.header("7. Platební metody")
+st.header("6. Platební metody")
 fig6 = go.Figure()
 fig6.add_trace(go.Pie(labels=payment["payment_type"], values=payment["total_value"], hole=0.5))
 fig6.update_layout(height=420, template="plotly_white", font=dict(size=14), margin=dict(t=20))

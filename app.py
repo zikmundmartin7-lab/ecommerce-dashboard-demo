@@ -59,6 +59,61 @@ def n(value):
     return f"{value:,.0f}".replace(",", " ")
 
 
+with st.expander("⚙️ Nastavení výpočtu zisku – e-shop platforma nezná nákupní cenu, doplň marži"):
+    st.caption(
+        "Nic z toho, co sem zadáš nebo nahraješ, se nikam neukládá – počítá se to jen "
+        "pro tuhle relaci a po zavření appky to zmizí."
+    )
+    margin_mode = st.radio(
+        "Jak chceš zisk počítat?",
+        ["Ukázková marže (výchozí)", "Zadat jednotnou marži", "Nahrát marže podle kategorie"],
+        horizontal=True,
+    )
+
+    if margin_mode == "Zadat jednotnou marži":
+        flat_margin = st.slider("Odhadovaná marže (%)", 5, 60, 26) / 100
+        monthly = monthly.copy()
+        monthly["profit"] = monthly["revenue"] * flat_margin
+        category = category.copy()
+        category["profit"] = category["revenue"] * flat_margin
+        st.caption(f"Používá se jednotná marže {flat_margin*100:.0f} % napříč celým obdobím a všemi kategoriemi.")
+
+    elif margin_mode == "Nahrát marže podle kategorie":
+        template = category[["category"]].copy()
+        template["margin_pct"] = 26
+        st.download_button(
+            "Stáhnout šablonu CSV", template.to_csv(index=False).encode("utf-8"),
+            "sablona_marze.csv", "text/csv",
+        )
+        uploaded = st.file_uploader(
+            "Nahraj CSV se sloupci: category, margin_pct (marže v %, např. 26)", type="csv",
+        )
+        if uploaded is not None:
+            try:
+                margins = pd.read_csv(uploaded)
+                margins = margins[["category", "margin_pct"]].copy()
+                margins["margin_pct"] = margins["margin_pct"].astype(float) / 100
+                category = category.merge(margins, on="category", how="left")
+                missing = category["margin_pct"].isna().sum()
+                category["margin_pct"] = category["margin_pct"].fillna(0.26)
+                category["profit"] = category["revenue"] * category["margin_pct"]
+                blended_margin = category["profit"].sum() / category["revenue"].sum()
+                monthly = monthly.copy()
+                monthly["profit"] = monthly["revenue"] * blended_margin
+                msg = f"Nahráno. Vážená průměrná marže napříč kategoriemi: {blended_margin*100:.1f} %."
+                if missing:
+                    msg += f" ({missing} kategorií bez zadané marže použilo výchozích 26 %.)"
+                st.success(msg)
+            except Exception:
+                st.error(
+                    "Soubor se nepodařilo zpracovat – zkontroluj, že má sloupce "
+                    "'category' a 'margin_pct' (stáhni si šablonu výše)."
+                )
+        else:
+            st.info("Zatím nic nenahráno, používá se výchozí ukázková marže.")
+    # jinak necháváme monthly["profit"] / category z generate_data.py (sezónní ukázková marže)
+
+
 # Poslední 3 měsíce zvlášť, od nejnovějšího po nejstarší - velikost písma klesá s tím,
 # jak je měsíc starší, aby aktuální měsíc vizuálně vynikl.
 last_3 = monthly.tail(3).iloc[::-1].reset_index(drop=True)
